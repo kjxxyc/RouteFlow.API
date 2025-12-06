@@ -1,17 +1,24 @@
 ﻿using DeIdeas.RouteFlow.API.DAL.Context;
 using DeIdeas.RouteFlow.API.DAL.Interfaces;
-using DeIdeas.RouteFlow.API.DAL.Interfaces.RMHInterfaces;
+using DeIdeas.RouteFlow.API.DAL.Interfaces.LegacyInterfaces;
 using DeIdeas.RouteFlow.API.DAL.Interfaces.UserInterfaces;
+using DeIdeas.RouteFlow.API.DAL.Repositories.ModuleLegacy;
 using DeIdeas.RouteFlow.API.DAL.Repositories.ModuleUserRep;
 
 namespace DeIdeas.RouteFlow.API.DAL.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        // Fields
         private readonly LegacyContext _legacyContext = default!;
         private readonly AppDbContext _appContext = default!;
-        //private IRepFileSBF _repFileSBF = default!;
+
+        // Legacy repositories
+        private IOCRDRepository _ocrd = default!;
+        private IOINVRepository _oinv = default!;
+        private IPendingPassRepository _pendingPass = default!;
+        private IPendingPaymentRepository _pendingPayment = default!;
+        private ISnapshotRepository _snapshot = default!;
+        private IRutaRepository _ruta = default!;
 
         // ModuleUser repositories
         private ITypeUserRepository _typeUser = default!;
@@ -30,8 +37,15 @@ namespace DeIdeas.RouteFlow.API.DAL.Repositories
             _appContext = appContext;
         }
 
-        // Properties 
-        //public IRepFileSBF repFileSBF => _repFileSBF ??= new RepFileDropSBFRepository(_legacyContext);
+        // Legacy props
+        public IOCRDRepository OCRD => _ocrd ??= new OCRDRepository(_legacyContext);
+        public IOINVRepository OINV => _oinv ??= new OINVRepository(_legacyContext);
+        public IPendingPassRepository PendingPass => _pendingPass ??= new PendingPassRepository(_legacyContext);
+        public IPendingPaymentRepository PendingPayment => _pendingPayment ??= new PendingPaymentRepository(_legacyContext);
+        public ISnapshotRepository Snapshot => _snapshot ??= new SnapshotRepository(_legacyContext);
+        public IRutaRepository Ruta => _ruta ??= new RutaRepository(_legacyContext);
+
+        // ModuleUser props
         public ITypeUserRepository TypeUser => _typeUser ??= new TypeUserRepository(_appContext);
         public IDetTypeUserRepository DetTypeUser => _detTypeUser ??= new DetTypeUserRepository(_appContext);
         public IUserRepository USR_User => _usrUser ??= new UserRepository(_appContext);

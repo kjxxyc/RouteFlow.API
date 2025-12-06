@@ -29,9 +29,10 @@ namespace DeIdeas.RouteFlow.API.DTOs.UsrDTOs
         [DisplayName("Control")]
         public int IdControl { get; set; }
 
+        [Required(ErrorMessage = "El campo {0} es obligatorio")]
         [MaxLength(50, ErrorMessage = "El campo {0} puede tener hasta {1} caracteres")]
         [DisplayName("Rol")]
-        public string? Rol { get; set; }
+        public string Rol { get; set; } = null!;
     }
 
     public class ChangeStatusControlRolDto
@@ -39,6 +40,11 @@ namespace DeIdeas.RouteFlow.API.DTOs.UsrDTOs
         [Required(ErrorMessage = "El campo {0} es obligatorio")]
         [DisplayName("Control")]
         public int IdControl { get; set; }
+
+        [Required(ErrorMessage = "El campo {0} es obligatorio")]
+        [MaxLength(50, ErrorMessage = "El campo {0} puede tener hasta {1} caracteres")]
+        [DisplayName("Rol")]
+        public string Rol { get; set; } = null!;
 
         [Required(ErrorMessage = "El campo {0} es obligatorio")]
         [DisplayName("Estado")]

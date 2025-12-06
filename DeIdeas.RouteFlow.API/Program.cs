@@ -1,10 +1,11 @@
-
 using AutoMapper;
 using DeIdeas.RouteFlow.API.DAL.Context;
 using DeIdeas.RouteFlow.API.DAL.Interfaces;
 using DeIdeas.RouteFlow.API.DAL.Repositories;
 using DeIdeas.RouteFlow.API.Utilities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using DeIdeas.RouteFlow.API.Health;
 
 namespace DeIdeas.RouteFlow.API
 {
@@ -39,19 +40,30 @@ namespace DeIdeas.RouteFlow.API
                 opts.UseSqlServer(conn, sql => sql.MigrationsAssembly("DeIdeas.RouteFlow.API.DAL"))
             );
 
+            // Health checks: self + DB check via custom IHealthCheck
+            builder.Services.AddHealthChecks()
+                .AddCheck("self", () => HealthCheckResult.Healthy("OK"))
+                .AddCheck<DatabaseHealthCheck>("database");
+
             // CORS policy to allow Angular dev app (origin path parts like /starter are ignored by CORS)
-            /*
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAngularStarter", policy =>
                 {
-                    policy.WithOrigins("http://localhost:4200")
-                              .AllowAnyHeader()
-                              .AllowAnyMethod();
+                    policy.WithOrigins("http://localhost:4200", "http://127.0.0.1:4200")
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
                 });
-            });*/
+            });
 
             var app = builder.Build();
+
+            // Apply pending EF Core migrations for AppDbContext at startup
+            using (var scope = app.Services.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                db.Database.Migrate();
+            }
 
             // Enable CORS policy ***********************************************************************
             app.UseCors("AllowAngularStarter");
@@ -68,6 +80,10 @@ namespace DeIdeas.RouteFlow.API
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // Map health endpoints (liveness y DB readiness)
+            app.MapHealthChecks("/health");
+            app.MapHealthChecks("/health/db");
 
             app.Run();
         }

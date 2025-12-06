@@ -1,4 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using DeIdeas.RouteFlow.API.DAL.Models.Legacy;
+using DeIdeas.RouteFlow.API.DAL.Models.Routing;
 
 namespace DeIdeas.RouteFlow.API.DAL.Context
 {
@@ -6,21 +8,50 @@ namespace DeIdeas.RouteFlow.API.DAL.Context
     {
         public LegacyContext(DbContextOptions<LegacyContext> opts) : base(opts) { }
 
-        //public DbSet<CXC_V_RepFileDropSBFRE> ts { get; set; } // Cambia T por el tipo de entidad que necesites
-        /*
-        public DbSet<DetConcFilePlatform> DetConcFilePlatform { get; set; }
-        public DbSet<DetDropsTransactionSBF> DetDropsTransactionSBF { get; set; }
-        */
+        // Tablas legacy (solo lectura en API)
+        public DbSet<OCRD> OCRD { get; set; } = default!;
+        public DbSet<OINV> OINV { get; set; } = default!;
+        public DbSet<OINV_OCRD_Snapshot> OINV_OCRD_Snapshot { get; set; } = default!;
+
+        // Routing tables (legacy schema)
+        public DbSet<Ruta> Rutas { get; set; } = default!;
+        public DbSet<DetRuta> DetRutas { get; set; } = default!;
+
+        // Vistas legacy (solo lectura)
+        public DbSet<SAP_V_PendingPass> SAP_V_PendingPass { get; set; } = default!;
+        public DbSet<SAP_V_PendingPayment> SAP_V_PendingPayment { get; set; } = default!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            //modelBuilder.Entity<CXC_V_RepFileDropSBFRE>().ToView("CXC_V_RepFileDropSBFRE", "dbo").HasKey(x => x.IdConc);
+            // Mapeo de tablas
+            modelBuilder.Entity<OCRD>().ToTable("OCRD", "dbo").HasKey(x => x.CardCode);
+            modelBuilder.Entity<OINV>().ToTable("OINV", "dbo").HasKey(x => x.DocEntry);
+            modelBuilder.Entity<OINV_OCRD_Snapshot>().ToTable("OINV_OCRD_Snapshot", "dbo")
+                .HasKey(x => x.No_Documento);
 
-            //modelBuilder.Entity<CXC_V_RepFileDropSBFRE>().ToTable("ts", "dbo").HasKey(x => x.Id); // Cambia T por el tipo de entidad que necesites
-            /*
-            modelBuilder.Entity<DetConcFilePlatform>().ToTable("DetConcFilePlatform", "dbo").HasKey(x => x.IdConc && x = x.IdPlatform && x.Id);
+            // Mapping for routing tables
+            modelBuilder.Entity<Ruta>().ToTable("Rutas", "dbo");
+            modelBuilder.Entity<Ruta>().HasKey(r => r.RutaID);
+            modelBuilder.Entity<Ruta>().Property(r => r.TipoRuta).HasMaxLength(20).IsRequired();
+            modelBuilder.Entity<Ruta>().Property(r => r.FechaRuta).HasColumnType("date").IsRequired();
+            modelBuilder.Entity<Ruta>().Property(r => r.Estado).HasMaxLength(30).IsRequired();
+            modelBuilder.Entity<Ruta>().Property(r => r.Usuario).HasMaxLength(100).IsRequired();
+            modelBuilder.Entity<Ruta>().Property(r => r.UsuarioAsignado).HasMaxLength(100).IsRequired(false);
+            modelBuilder.Entity<Ruta>().Property(r => r.Fecha).HasColumnType("datetime").IsRequired();
 
-            modelBuilder.Entity<DetDropsTransactionSBF>().ToTable("DetDropsTransactionSBF", "dbo").HasKey(y => y.IdConc);
-            */
+            modelBuilder.Entity<DetRuta>().ToTable("DetRutas", "dbo");
+            modelBuilder.Entity<DetRuta>().HasKey(d => d.DetRutaID);
+            modelBuilder.Entity<DetRuta>().Property(d => d.Usuario).HasMaxLength(100).IsRequired();
+            modelBuilder.Entity<DetRuta>().Property(d => d.Fecha).HasColumnType("datetime").IsRequired();
+            modelBuilder.Entity<DetRuta>()
+                .HasOne<Ruta>()
+                .WithMany()
+                .HasForeignKey(d => d.RutaID)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            // Mapeo de vistas (sin llave)
+            modelBuilder.Entity<SAP_V_PendingPass>().HasNoKey().ToView("SAP_V_PendingPass", "dbo");
+            modelBuilder.Entity<SAP_V_PendingPayment>().HasNoKey().ToView("SAP_V_PendingPayment", "dbo");
         }
     }
 }

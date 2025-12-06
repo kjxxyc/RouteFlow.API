@@ -36,10 +36,11 @@ namespace DeIdeas.RouteFlow.API.Controllers.UserControllers
             });
         }
 
-        [HttpGet("{id}", Name = nameof(GetControlRolById))]
-        public async Task<IActionResult> GetControlRolById(int id)
+        // Nuevo endpoint con clave compuesta
+        [HttpGet("{idControl:int}/{rol}", Name = nameof(GetControlRolById))]
+        public async Task<IActionResult> GetControlRolById(int idControl, string rol)
         {
-            var entity = await _unit.USR_ControlRol.FindByIdAsync(id);
+            var entity = await _unit.USR_ControlRol.GetSingleWithFilterAsync(x => x.IdControl == idControl && x.Rol == rol);
             if (entity == null) return NotFound();
 
             var dto = _mapper.Map<ReadControlRolDto>(entity);
@@ -57,12 +58,25 @@ namespace DeIdeas.RouteFlow.API.Controllers.UserControllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
+            // Validaciones FK explícitas para evitar errores 547
+            var control = await _unit.USR_Control.FindByIdAsync(resource.IdControl);
+            if (control == null) return NotFound(new { Message = "Control no existe" });
+
+            var rolEntity = await _unit.USR_Rol.FindById(resource.Rol);
+            if (rolEntity == null) return NotFound(new { Message = "Rol no existe" });
+
+            // Evitar duplicados
+            var exists = await _unit.USR_ControlRol.CheckWithConditionAsync(x => x.IdControl == resource.IdControl && x.Rol == resource.Rol);
+            if (exists) return Conflict(new { Message = "Ya existe la relación Control-Rol" });
+
             var entity = _mapper.Map<USR_ControlRol>(resource);
+            entity.Date = DateTime.UtcNow;
+            entity.Status = 1;
             _unit.USR_ControlRol.Create(entity);
             await _unit.SaveChangesAsync();
 
             var dto = _mapper.Map<ReadControlRolDto>(entity);
-            return CreatedAtAction(nameof(GetControlRolById), new { id = entity.IdControl }, new ApiRequestResultDto<ReadControlRolDto>
+            return CreatedAtAction(nameof(GetControlRolById), new { idControl = entity.IdControl, rol = entity.Rol }, new ApiRequestResultDto<ReadControlRolDto>
             {
                 HttpCode = (int)HttpStatusCode.Created,
                 Success = true,
@@ -75,11 +89,12 @@ namespace DeIdeas.RouteFlow.API.Controllers.UserControllers
         public async Task<IActionResult> UpdateControlRol([FromBody] ModifyControlRolDto resource)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (string.IsNullOrWhiteSpace(resource.Rol)) return BadRequest(new { Message = "Rol es requerido" });
 
-            var entity = await _unit.USR_ControlRol.FindByIdAsync(resource.IdControl);
+            var entity = await _unit.USR_ControlRol.GetSingleWithFilterAsync(x => x.IdControl == resource.IdControl && x.Rol == resource.Rol);
             if (entity == null) return NotFound();
 
-            _mapper.Map(resource, entity);
+            // Claves compuestas no se modifican; solo otros campos (no hay otros aquí)
             _unit.USR_ControlRol.Update(entity);
             await _unit.SaveChangesAsync();
 
@@ -97,8 +112,10 @@ namespace DeIdeas.RouteFlow.API.Controllers.UserControllers
         public async Task<IActionResult> ChangeStatusControlRol([FromBody] ChangeStatusControlRolDto resource)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (resource.Status < 0) return BadRequest(new { Message = "Estado inválido" });
+            if (string.IsNullOrWhiteSpace(resource.Rol)) return BadRequest(new { Message = "Rol es requerido" });
 
-            var entity = await _unit.USR_ControlRol.FindByIdAsync(resource.IdControl);
+            var entity = await _unit.USR_ControlRol.GetSingleWithFilterAsync(x => x.IdControl == resource.IdControl && x.Rol == resource.Rol);
             if (entity == null) return NotFound();
 
             entity.Status = resource.Status;
@@ -115,10 +132,10 @@ namespace DeIdeas.RouteFlow.API.Controllers.UserControllers
             });
         }
 
-        [HttpDelete("{id}", Name = nameof(DeleteControlRol))]
-        public async Task<IActionResult> DeleteControlRol(int id)
+        [HttpDelete("{idControl:int}/{rol}", Name = nameof(DeleteControlRol))]
+        public async Task<IActionResult> DeleteControlRol(int idControl, string rol)
         {
-            var entity = await _unit.USR_ControlRol.FindByIdAsync(id);
+            var entity = await _unit.USR_ControlRol.GetSingleWithFilterAsync(x => x.IdControl == idControl && x.Rol == rol);
             if (entity == null) return NotFound();
 
             _unit.USR_ControlRol.Delete(entity);
